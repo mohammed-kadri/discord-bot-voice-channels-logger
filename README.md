@@ -1,1 +1,1 @@
-# discord-bot-voice-channels-logger
+# Discord Bot Voice Channels Logger
