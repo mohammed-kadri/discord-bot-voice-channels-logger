@@ -18,7 +18,6 @@ bot = commands.Bot(command_prefix=config['prefix'], intents=intents)
 
 logging_paused = False
 
-# Initialize DynamoDB
 dynamodb = boto3.resource('dynamodb')
 table = dynamodb.Table('VoiceChannelActivityLogger')
 
