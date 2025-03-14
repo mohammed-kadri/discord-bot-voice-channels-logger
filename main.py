@@ -18,8 +18,12 @@ bot = commands.Bot(command_prefix=config['prefix'], intents=intents)
 
 logging_paused = False
 
+# Initialize DynamoDB
 dynamodb = boto3.resource('dynamodb')
 table = dynamodb.Table('VoiceChannelActivityLogger')
+
+log_channel_id = None
+
 
 @bot.event
 async def on_ready():
@@ -36,7 +40,7 @@ async def on_voice_state_update(member, before, after):
         return
 
     # Fetch the log channel ID from DynamoDB
-    response = table.get_item(Key={'server_id': str(member.guild.id)})
+    response = table.get_item(Key={'guild_id': str(member.guild.id)})
     log_channel_id = response['Item']['log_channel_id'] if 'Item' in response else config['log_channel_id']
     log_channel = bot.get_channel(int(log_channel_id))
     
@@ -68,6 +72,23 @@ async def on_voice_state_update(member, before, after):
             f'**Users in current channel:** {", ".join(users_in_after_channel)}'
         )
         await log_channel.send(message)
+
+
+@bot.event
+async def on_guild_channel_delete(channel):
+    # Fetch the log channel ID from DynamoDB
+    response = table.get_item(Key={'guild_id': str(channel.guild.id)})
+    if 'Item' in response:
+        log_channel_id = response['Item']['log_channel_id']
+        if str(channel.id) == log_channel_id:
+            # Update the log channel ID to null in DynamoDB
+            table.update_item(
+                Key={'guild_id': str(channel.guild.id)},
+                UpdateExpression="set log_channel_id = :val",
+                ExpressionAttributeValues={':val': None}
+            )
+            print(f"Log channel for guild {channel.guild.name} has been deleted and set to null.")
+
 
 @bot.tree.command(name="pause_logging", description="Pause voice channel logging")
 async def pause_logging(interaction: discord.Interaction):
